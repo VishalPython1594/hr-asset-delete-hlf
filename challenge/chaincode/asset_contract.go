@@ -10,21 +10,18 @@ type SmartContract struct {
 	contractapi.Contract
 }
 
+// DeleteAsset deletes an asset from the ledger
 func (s *SmartContract) DeleteAsset(ctx contractapi.TransactionContextInterface, id string) error {
 
-	exists, err := s.AssetExists(ctx, id)
+	// TODO:
+	// 1. Check if asset exists using AssetExists
+	// 2. If asset does not exist → return error
+	// 3. Delete asset using DelState
 
-	if err != nil {
-		return err
-	}
-
-	if !exists {
-		return fmt.Errorf("asset %s does not exist", id)
-	}
-
-	return ctx.GetStub().DelState(id)
+	return fmt.Errorf("not implemented")
 }
 
+// AssetExists checks if asset exists in world state
 func (s *SmartContract) AssetExists(ctx contractapi.TransactionContextInterface, id string) (bool, error) {
 
 	assetJSON, err := ctx.GetStub().GetState(id)
