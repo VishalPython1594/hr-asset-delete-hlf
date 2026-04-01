@@ -42,8 +42,8 @@ function checkPrereqs() {
 
   LOCAL_VERSION=$(peer version | sed -ne 's/^ Version: //p')
 
-  # ✅ FIXED IMAGE HERE
-  DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm bitnami/hyperledger-fabric-tools:2.5 peer version | sed -ne 's/^ Version: //p')
+  # ✅ ECR IMAGE
+  DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm public.ecr.aws/hyperledger/fabric-tools:2.5 peer version | sed -ne 's/^ Version: //p')
 
   infoln "LOCAL_VERSION=$LOCAL_VERSION"
   infoln "DOCKER_IMAGE_VERSION=$DOCKER_IMAGE_VERSION"
@@ -69,8 +69,8 @@ function checkPrereqs() {
 
     CA_LOCAL_VERSION=$(fabric-ca-client version | sed -ne 's/ Version: //p')
 
-    # ✅ FIXED IMAGE HERE
-    CA_DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm bitnami/hyperledger-fabric-ca:2.5 fabric-ca-client version | sed -ne 's/ Version: //p' | head -1)
+    # ✅ ECR IMAGE
+    CA_DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm public.ecr.aws/hyperledger/fabric-ca:1.5 fabric-ca-client version | sed -ne 's/ Version: //p' | head -1)
 
     infoln "CA_LOCAL_VERSION=$CA_LOCAL_VERSION"
     infoln "CA_DOCKER_IMAGE_VERSION=$CA_DOCKER_IMAGE_VERSION"
@@ -90,6 +90,26 @@ function createOrgs() {
     cryptogen generate --config=./organizations/cryptogen/crypto-config-orderer.yaml --output="organizations"
   fi
 
+  if [ "$CRYPTO" == "Certificate Authorities" ]; then
+    infoln "Generating certificates using Fabric CA"
+    ${CONTAINER_CLI_COMPOSE} -f compose/$COMPOSE_FILE_CA -f compose/$CONTAINER_CLI/${CONTAINER_CLI}-$COMPOSE_FILE_CA up -d 2>&1
+
+    . organizations/fabric-ca/registerEnroll.sh
+
+    while :
+    do
+      if [ ! -f "organizations/fabric-ca/org1/tls-cert.pem" ]; then
+        sleep 1
+      else
+        break
+      fi
+    done
+
+    createOrg1
+    createOrg2
+    createOrderer
+  fi
+
   ./organizations/ccp-generate.sh
 }
 
@@ -102,6 +122,10 @@ function networkUp() {
 
   COMPOSE_FILES="-f compose/${COMPOSE_FILE_BASE} -f compose/${CONTAINER_CLI}/${CONTAINER_CLI}-${COMPOSE_FILE_BASE}"
 
+  if [ "${DATABASE}" == "couchdb" ]; then
+    COMPOSE_FILES="${COMPOSE_FILES} -f compose/${COMPOSE_FILE_COUCH} -f compose/${CONTAINER_CLI}/${CONTAINER_CLI}-${COMPOSE_FILE_COUCH}"
+  fi
+
   DOCKER_SOCK="${DOCKER_SOCK}" ${CONTAINER_CLI_COMPOSE} ${COMPOSE_FILES} up -d 2>&1
 
   $CONTAINER_CLI ps -a
@@ -111,7 +135,31 @@ function networkUp() {
 }
 
 function createChannel() {
+  bringUpNetwork="false"
+
+  if ! $CONTAINER_CLI info > /dev/null 2>&1 ; then
+    fatalln "$CONTAINER_CLI network is required to be running to create a channel"
+  fi
+
+  CONTAINERS=($($CONTAINER_CLI ps | grep hyperledger/ | awk '{print $2}'))
+  len=$(echo ${#CONTAINERS[@]})
+
+  if [[ $len -ge 4 ]] && [[ ! -d "organizations/peerOrganizations" ]]; then
+    networkDown
+  fi
+
+  [[ $len -lt 4 ]] || [[ ! -d "organizations/peerOrganizations" ]] && bringUpNetwork="true" || echo "Network Running Already"
+
+  if [ $bringUpNetwork == "true"  ]; then
+    infoln "Bringing up network"
+    networkUp
+  fi
+
   scripts/createChannel.sh $CHANNEL_NAME $CLI_DELAY $MAX_RETRY $VERBOSE
+}
+
+function deployCC() {
+  scripts/deployCC.sh $CHANNEL_NAME $CC_NAME $CC_SRC_PATH $CC_SRC_LANGUAGE $CC_VERSION $CC_SEQUENCE $CC_INIT_FCN $CC_END_POLICY $CC_COLL_CONFIG $CLI_DELAY $MAX_RETRY $VERBOSE
 }
 
 function networkDown() {
@@ -124,8 +172,13 @@ CRYPTO="cryptogen"
 MAX_RETRY=5
 CLI_DELAY=3
 CHANNEL_NAME="mychannel"
+COMPOSE_FILE_BASE=compose-test-net.yaml
+COMPOSE_FILE_COUCH=compose-couch.yaml
+COMPOSE_FILE_CA=compose-ca.yaml
+DATABASE="leveldb"
 
 MODE=$1
+shift
 
 if [ "$MODE" == "up" ]; then
   networkUp
@@ -134,5 +187,5 @@ elif [ "$MODE" == "createChannel" ]; then
 elif [ "$MODE" == "down" ]; then
   networkDown
 else
-  echo "Usage: ./network.sh [up|down|createChannel]"
+  echo "Usage: ./network.sh [up|createChannel|down]"
 fi
