@@ -33,6 +33,6 @@ services:
   
   cli:
     container_name: cli
-    image: hyperledger/fabric-tools:2.5.11
+    image: bitnami/hyperledger-bitnami/hyperledger-fabric-tools:latest:latest:2.5.11
     volumes:
       - ./docker/peercfg:/etc/hyperledger/peercfg

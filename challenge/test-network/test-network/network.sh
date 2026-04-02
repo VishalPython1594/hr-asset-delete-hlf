@@ -44,7 +44,7 @@ function checkPrereqs() {
   fi
 
   LOCAL_VERSION=$(peer version | sed -ne 's/^ Version: //p')
-  DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm bitnami/hyperledger-fabric-tools:latest peer version | sed -ne 's/^ Version: //p')
+  DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm bitnami/hyperledger-bitnami/hyperledger-fabric-tools:latest:latest peer version | sed -ne 's/^ Version: //p')
 
   infoln "LOCAL_VERSION=$LOCAL_VERSION"
   infoln "DOCKER_IMAGE_VERSION=$DOCKER_IMAGE_VERSION"
@@ -67,20 +67,20 @@ function checkPrereqs() {
 
   if [ "$CRYPTO" == "Certificate Authorities" ]; then
 
-    fabric-ca-client version > /dev/null 2>&1
+    bitnami/hyperledger-fabric-ca:latest-client version > /dev/null 2>&1
     if [[ $? -ne 0 ]]; then
-      errorln "fabric-ca-client binary not found.."
+      errorln "bitnami/hyperledger-fabric-ca:latest-client binary not found.."
       exit 1
     fi
 
-    CA_LOCAL_VERSION=$(fabric-ca-client version | sed -ne 's/ Version: //p')
-    CA_DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm bitnami/hyperledger-fabric-ca:latest fabric-ca-client version | sed -ne 's/ Version: //p' | head -1)
+    CA_LOCAL_VERSION=$(bitnami/hyperledger-fabric-ca:latest-client version | sed -ne 's/ Version: //p')
+    CA_DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm bitnami/hyperledger-bitnami/hyperledger-fabric-ca:latest:latest bitnami/hyperledger-fabric-ca:latest-client version | sed -ne 's/ Version: //p' | head -1)
 
     infoln "CA_LOCAL_VERSION=$CA_LOCAL_VERSION"
     infoln "CA_DOCKER_IMAGE_VERSION=$CA_DOCKER_IMAGE_VERSION"
 
     if [ "$CA_LOCAL_VERSION" != "$CA_DOCKER_IMAGE_VERSION" ]; then
-      warnln "Local fabric-ca binaries and docker images are out of sync. This may cause problems."
+      warnln "Local bitnami/hyperledger-fabric-ca:latest binaries and docker images are out of sync. This may cause problems."
     fi
   fi
 }
@@ -107,11 +107,11 @@ function createOrgs() {
     infoln "Generating certificates using Fabric CA"
     ${CONTAINER_CLI_COMPOSE} -f compose/$COMPOSE_FILE_CA -f compose/$CONTAINER_CLI/${CONTAINER_CLI}-$COMPOSE_FILE_CA up -d 2>&1
 
-    . organizations/fabric-ca/registerEnroll.sh
+    . organizations/bitnami/hyperledger-fabric-ca:latest/registerEnroll.sh
 
     while :
     do
-      if [ ! -f "organizations/fabric-ca/org1/tls-cert.pem" ]; then
+      if [ ! -f "organizations/bitnami/hyperledger-fabric-ca:latest/org1/tls-cert.pem" ]; then
         sleep 1
       else
         break

@@ -1,5 +1,5 @@
 #############################################################################
-#   This is a configuration file for the fabric-ca-server command.
+#   This is a configuration file for the bitnami/hyperledger-fabric-ca:latest-server command.
 #
 #   COMMAND LINE ARGUMENTS AND ENVIRONMENT VARIABLES
 #   ------------------------------------------------
@@ -100,18 +100,18 @@ crl:
   expiry: 24h
 
 #############################################################################
-#  The registry section controls how the fabric-ca-server does two things:
+#  The registry section controls how the bitnami/hyperledger-fabric-ca:latest-server does two things:
 #  1) authenticates enrollment requests which contain a username and password
 #     (also known as an enrollment ID and secret).
 #  2) once authenticated, retrieves the identity's attribute names and
-#     values which the fabric-ca-server optionally puts into TCerts
+#     values which the bitnami/hyperledger-fabric-ca:latest-server optionally puts into TCerts
 #     which it issues for transacting on the Hyperledger Fabric blockchain.
 #     These attributes are useful for making access control decisions in
 #     chaincode.
 #  There are two main configuration options:
-#  1) The fabric-ca-server is the registry.
+#  1) The bitnami/hyperledger-fabric-ca:latest-server is the registry.
 #     This is true if "ldap.enabled" in the ldap section below is false.
-#  2) An LDAP server is the registry, in which case the fabric-ca-server
+#  2) An LDAP server is the registry, in which case the bitnami/hyperledger-fabric-ca:latest-server
 #     calls the LDAP server to perform these tasks.
 #     This is true if "ldap.enabled" in the ldap section below is true,
 #     which means this "registry" section is ignored.
@@ -142,13 +142,13 @@ registry:
 #  The datasource value depends on the type.
 #  If the type is "sqlite3", the datasource value is a file name to use
 #  as the database store.  Since "sqlite3" is an embedded database, it
-#  may not be used if you want to run the fabric-ca-server in a cluster.
-#  To run the fabric-ca-server in a cluster, you must choose "postgres"
+#  may not be used if you want to run the bitnami/hyperledger-fabric-ca:latest-server in a cluster.
+#  To run the bitnami/hyperledger-fabric-ca:latest-server in a cluster, you must choose "postgres"
 #  or "mysql".
 #############################################################################
 db:
   type: sqlite3
-  datasource: fabric-ca-server.db
+  datasource: bitnami/hyperledger-fabric-ca:latest-server.db
   tls:
       enabled: false
       certfiles:
@@ -158,7 +158,7 @@ db:
 
 #############################################################################
 #  LDAP section
-#  If LDAP is enabled, the fabric-ca-server calls LDAP to:
+#  If LDAP is enabled, the bitnami/hyperledger-fabric-ca:latest-server calls LDAP to:
 #  1) authenticate enrollment ID and secret (i.e. username and password)
 #     for enrollment requests;
 #  2) To retrieve identity attributes
@@ -348,10 +348,10 @@ bccsp:
 # the server config file except port, debug, and tls sections.
 #
 # Examples:
-# fabric-ca-server start -b admin:adminpw --cacount 2
+# bitnami/hyperledger-fabric-ca:latest-server start -b admin:adminpw --cacount 2
 #
-# fabric-ca-server start -b admin:adminpw --cafiles ca/ca1/fabric-ca-server-config.yaml
-# --cafiles ca/ca2/fabric-ca-server-config.yaml
+# bitnami/hyperledger-fabric-ca:latest-server start -b admin:adminpw --cafiles ca/ca1/bitnami/hyperledger-fabric-ca:latest-server-config.yaml
+# --cafiles ca/ca2/bitnami/hyperledger-fabric-ca:latest-server-config.yaml
 #
 #############################################################################
 

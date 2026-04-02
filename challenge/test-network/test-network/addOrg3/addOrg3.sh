@@ -79,9 +79,9 @@ function generateOrg3() {
 
   # Create crypto material using Fabric CA
   if [ "$CRYPTO" == "Certificate Authorities" ]; then
-    fabric-ca-client version > /dev/null 2>&1
+    bitnami/hyperledger-fabric-ca:latest-client version > /dev/null 2>&1
     if [[ $? -ne 0 ]]; then
-      echo "ERROR! fabric-ca-client binary not found.."
+      echo "ERROR! bitnami/hyperledger-fabric-ca:latest-client binary not found.."
       echo
       echo "Follow the instructions in the Fabric docs to install the Fabric Binaries:"
       echo "https://hyperledger-fabric.readthedocs.io/en/latest/install.html"
@@ -91,7 +91,7 @@ function generateOrg3() {
     infoln "Generating certificates using Fabric CA"
     ${CONTAINER_CLI_COMPOSE} -f ${COMPOSE_FILE_CA_BASE} -f $COMPOSE_FILE_CA_ORG3 up -d 2>&1
 
-    . fabric-ca/registerEnroll.sh
+    . bitnami/hyperledger-fabric-ca:latest/registerEnroll.sh
 
     sleep 10
 
