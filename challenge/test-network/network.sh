@@ -37,25 +37,31 @@ function checkPrereqs() {
 
   if [[ $? -ne 0 || ! -d "../config" ]]; then
     errorln "Peer binary and configuration files not found.."
+    errorln
+    errorln "Follow the instructions in the Fabric docs to install the Fabric Binaries:"
+    errorln "https://hyperledger-fabric.readthedocs.io/en/latest/install.html"
     exit 1
   fi
 
   LOCAL_VERSION=$(peer version | sed -ne 's/^ Version: //p')
-
-  # ✅ ECR IMAGE
-  DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm public.ecr.aws/hyperledger/fabric-tools:2.5 peer version | sed -ne 's/^ Version: //p')
+  DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm bitnami/hyperledger-fabric-tools:latest peer version | sed -ne 's/^ Version: //p')
 
   infoln "LOCAL_VERSION=$LOCAL_VERSION"
   infoln "DOCKER_IMAGE_VERSION=$DOCKER_IMAGE_VERSION"
 
   if [ "$LOCAL_VERSION" != "$DOCKER_IMAGE_VERSION" ]; then
-    warnln "Local fabric binaries and docker images are out of sync. This may cause problems."
+    warnln "Local fabric binaries and docker images are out of  sync. This may cause problems."
   fi
 
   for UNSUPPORTED_VERSION in $NONWORKING_VERSIONS; do
     infoln "$LOCAL_VERSION" | grep -q $UNSUPPORTED_VERSION
     if [ $? -eq 0 ]; then
-      fatalln "Unsupported Fabric version"
+      fatalln "Local Fabric binary version of $LOCAL_VERSION does not match the versions supported by the test network."
+    fi
+
+    infoln "$DOCKER_IMAGE_VERSION" | grep -q $UNSUPPORTED_VERSION
+    if [ $? -eq 0 ]; then
+      fatalln "Fabric Docker image version of $DOCKER_IMAGE_VERSION does not match the versions supported by the test network."
     fi
   done
 
@@ -68,12 +74,14 @@ function checkPrereqs() {
     fi
 
     CA_LOCAL_VERSION=$(fabric-ca-client version | sed -ne 's/ Version: //p')
-
-    # ✅ ECR IMAGE
-    CA_DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm public.ecr.aws/hyperledger/fabric-ca:1.5 fabric-ca-client version | sed -ne 's/ Version: //p' | head -1)
+    CA_DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm bitnami/hyperledger-fabric-ca:latest fabric-ca-client version | sed -ne 's/ Version: //p' | head -1)
 
     infoln "CA_LOCAL_VERSION=$CA_LOCAL_VERSION"
     infoln "CA_DOCKER_IMAGE_VERSION=$CA_DOCKER_IMAGE_VERSION"
+
+    if [ "$CA_LOCAL_VERSION" != "$CA_DOCKER_IMAGE_VERSION" ]; then
+      warnln "Local fabric-ca binaries and docker images are out of sync. This may cause problems."
+    fi
   fi
 }
 
@@ -83,6 +91,11 @@ function createOrgs() {
   fi
 
   if [ "$CRYPTO" == "cryptogen" ]; then
+    which cryptogen
+    if [ "$?" -ne 0 ]; then
+      fatalln "cryptogen tool not found. exiting"
+    fi
+
     infoln "Generating certificates using cryptogen tool"
 
     cryptogen generate --config=./organizations/cryptogen/crypto-config-org1.yaml --output="organizations"
@@ -148,10 +161,9 @@ function createChannel() {
     networkDown
   fi
 
-  [[ $len -lt 4 ]] || [[ ! -d "organizations/peerOrganizations" ]] && bringUpNetwork="true" || echo "Network Running Already"
+  [[ $len -lt 4 ]] || [[ ! -d "organizations/peerOrganizations" ]] && bringUpNetwork="true"
 
   if [ $bringUpNetwork == "true"  ]; then
-    infoln "Bringing up network"
     networkUp
   fi
 
@@ -172,13 +184,21 @@ CRYPTO="cryptogen"
 MAX_RETRY=5
 CLI_DELAY=3
 CHANNEL_NAME="mychannel"
+CC_NAME="NA"
+CC_SRC_PATH="NA"
+CC_END_POLICY="NA"
+CC_COLL_CONFIG="NA"
+CC_INIT_FCN="NA"
 COMPOSE_FILE_BASE=compose-test-net.yaml
 COMPOSE_FILE_COUCH=compose-couch.yaml
 COMPOSE_FILE_CA=compose-ca.yaml
+CC_SRC_LANGUAGE="NA"
+CCAAS_DOCKER_RUN=true
+CC_VERSION="1.0"
+CC_SEQUENCE=1
 DATABASE="leveldb"
 
 MODE=$1
-shift
 
 if [ "$MODE" == "up" ]; then
   networkUp
@@ -186,6 +206,8 @@ elif [ "$MODE" == "createChannel" ]; then
   createChannel
 elif [ "$MODE" == "down" ]; then
   networkDown
+elif [ "$MODE" == "deployCC" ]; then
+  deployCC
 else
-  echo "Usage: ./network.sh [up|createChannel|down]"
+  echo "Usage: ./network.sh [up|down|createChannel|deployCC]"
 fi
